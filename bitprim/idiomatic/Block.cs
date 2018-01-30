@@ -86,7 +86,9 @@ namespace Bitprim
         {
             get
             {
-                return BlockNative.chain_block_hash(nativeInstance_);
+                var managedHash = new hash_t();
+                BlockNative.chain_block_hash_out(nativeInstance_, ref managedHash);
+                return managedHash.hash;
             }
         }
 
@@ -97,7 +99,9 @@ namespace Bitprim
         {
             get
             {
-                return BlockNative.chain_block_generate_merkle_root(nativeInstance_);
+                var managedHash = new hash_t();
+                BlockNative.chain_block_generate_merkle_root_out(nativeInstance_, ref managedHash);
+                return managedHash.hash;
             }
         }
 
@@ -109,6 +113,14 @@ namespace Bitprim
             get
             {
                 return new Header(BlockNative.chain_block_header(nativeInstance_), false);
+            }
+        }
+
+        public string Proof
+        {
+            get
+            {
+                return new NativeString(BlockNative.chain_block_proof(nativeInstance_)).ToString();
             }
         }
 
@@ -184,6 +196,18 @@ namespace Bitprim
         public bool IsValidCoinbaseScript(UInt64 height)
         {
             return BlockNative.chain_block_is_valid_coinbase_script(nativeInstance_, (UIntPtr)height) != 0;
+        }
+
+        /// <summary>
+        /// Raw block data.
+        /// </summary>
+        /// <param name="wire">Iif true, include data size at the beginning.</param>
+        /// <returns>Byte array with block data.</returns>
+        public byte[] ToData(bool wire)
+        {
+            int blockSize = 0;
+            var blockData = new NativeBuffer(BlockNative.chain_block_to_data(nativeInstance_, wire? 1:0, ref blockSize));
+            return blockData.CopyToManagedArray(blockSize);
         }
 
         /// <summary>

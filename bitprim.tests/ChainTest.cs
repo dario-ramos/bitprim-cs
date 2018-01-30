@@ -6,6 +6,7 @@ using Xunit;
 using System.Net;
 using System.IO;
 using Newtonsoft.Json;
+using Bitprim.Native;
 
 namespace Bitprim.Tests
 {
@@ -22,18 +23,18 @@ namespace Bitprim.Tests
         [Fact]
         public void TestFetchLastHeight()
         {
-            Tuple<int,UInt64> errorAndHeight = GetLastHeight();
-            Assert.Equal(0, errorAndHeight.Item1);
+            Tuple<ErrorCode,UInt64> errorAndHeight = GetLastHeight();
+            Assert.Equal(ErrorCode.Success, errorAndHeight.Item1);
         }
 
         [Fact]
         public void TestFetchBlockHeaderByHeight()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Header header = null;
 
-            Action<int, Header> handler = delegate(int theError, Header theHeader)
+            Action<ErrorCode, Header> handler = delegate(ErrorCode theError, Header theHeader)
             {
                 error = theError;
                 header = theHeader;
@@ -43,7 +44,7 @@ namespace Bitprim.Tests
             executorFixture_.Executor.Chain.FetchBlockHeaderByHeight(0, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             VerifyGenesisBlockHeader(header);
         }
 
@@ -51,21 +52,21 @@ namespace Bitprim.Tests
         public void TestFetchBlockHeaderByHash()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Header header = null;
 
-            Action<int, Header> handler = delegate(int theError, Header theHeader)
+            Action<ErrorCode, Header> handler = delegate(ErrorCode theError, Header theHeader)
             {
                 error = theError;
                 header = theHeader;
                 handlerDone.Set();
             };
             //https://blockchain.info/es/block-height/0
-            byte[] hash = HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+            byte[] hash = Binary.HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
             executorFixture_.Executor.Chain.FetchBlockHeaderByHash(hash, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             VerifyGenesisBlockHeader(header);
         }
 
@@ -73,10 +74,10 @@ namespace Bitprim.Tests
         public void TestFetchBlockByHeight()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Block block = null;
 
-            Action<int, Block> handler = delegate(int theError, Block theBlock)
+            Action<ErrorCode, Block> handler = delegate(ErrorCode theError, Block theBlock)
             {
                 error = theError;
                 block = theBlock;
@@ -86,7 +87,7 @@ namespace Bitprim.Tests
             executorFixture_.Executor.Chain.FetchBlockByHeight(0, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             VerifyGenesisBlockHeader(block.Header);
         }
 
@@ -94,43 +95,57 @@ namespace Bitprim.Tests
         public void TestFetchBlockByHash()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Block block = null;
 
-            Action<int, Block> handler = delegate(int theError, Block theBlock)
+            Action<ErrorCode, Block> handler = delegate(ErrorCode theError, Block theBlock)
             {
                 error = theError;
                 block = theBlock;
                 handlerDone.Set();
             };
             //https://blockchain.info/es/block-height/0
-            byte[] hash = HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+            byte[] hash = Binary.HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
             executorFixture_.Executor.Chain.FetchBlockByHash(hash, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             VerifyGenesisBlockHeader(block.Header);
+        }
+
+        [Fact]
+        public void TestGetBlockByHash()
+        {
+            //https://blockchain.info/es/block-height/0
+            byte[] hash = Binary.HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+            Tuple<ErrorCode, Block, UInt64> result = executorFixture_.Executor.Chain.GetBlockByHash(hash);
+            ErrorCode error = result.Item1;
+            Block block = result.Item2;
+            UInt64 height = result.Item3;
+            Assert.Equal(ErrorCode.Success, error);
+            VerifyGenesisBlockHeader(block.Header);
+            Assert.Equal(0UL, height);
         }
 
         [Fact]
         public void TestFetchBlockHeight()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             UInt64 height = 0;
 
-            Action<int, UInt64> handler = delegate(int theError, UInt64 theHeight)
+            Action<ErrorCode, UInt64> handler = delegate(ErrorCode theError, UInt64 theHeight)
             {
                 error = theError;
                 height = theHeight;
                 handlerDone.Set();
             };
             //https://blockchain.info/es/block-height/0
-            byte[] hash = HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+            byte[] hash = Binary.HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
             executorFixture_.Executor.Chain.FetchBlockHeight(hash, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.Equal<UInt64>(0, height);
         }
 
@@ -140,23 +155,23 @@ namespace Bitprim.Tests
             var handlerDone = new AutoResetEvent(false);
             WaitUntilBlock(FIRST_NON_COINBASE_BLOCK_HEIGHT, "TestFetchSpend");
 
-            int error = 0;
+            ErrorCode error = 0;
             Point point = null;
 
-            Action<int, Point> handler = delegate(int theError, Point thePoint)
+            Action<ErrorCode, Point> handler = delegate(ErrorCode theError, Point thePoint)
             {
                 error = theError;
                 point = thePoint;
                 handlerDone.Set();
             };
-            byte[] hash = HexStringToByteArray("0437cd7f8525ceed2324359c2d0ba26006d92d856a9c20fa0241106ee5a597c9");
+            byte[] hash = Binary.HexStringToByteArray("0437cd7f8525ceed2324359c2d0ba26006d92d856a9c20fa0241106ee5a597c9");
             OutputPoint outputPoint = new OutputPoint(hash, 0);
             executorFixture_.Executor.Chain.FetchSpend(outputPoint, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.NotNull(point);
-            Assert.Equal("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16", ByteArrayToHexString(point.Hash));
+            Assert.Equal("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16", Binary.ByteArrayToHexString(point.Hash));
             Assert.Equal<UInt32>(0, point.Index);
         }
 
@@ -164,11 +179,11 @@ namespace Bitprim.Tests
         public void TestFetchMerkleBlockByHash()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             MerkleBlock merkleBlock = null;
             UInt64 height = 0;
 
-            Action<int, MerkleBlock, UInt64> handler = delegate(int theError, MerkleBlock theBlock, UInt64 theHeight)
+            Action<ErrorCode, MerkleBlock, UInt64> handler = delegate(ErrorCode theError, MerkleBlock theBlock, UInt64 theHeight)
             {
                 error = theError;
                 merkleBlock = theBlock;
@@ -176,11 +191,11 @@ namespace Bitprim.Tests
                 handlerDone.Set();
             };
             //https://blockchain.info/es/block-height/0
-            byte[] hash = HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+            byte[] hash = Binary.HexStringToByteArray("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
             executorFixture_.Executor.Chain.FetchMerkleBlockByHash(hash, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.NotNull(merkleBlock);
             Assert.Equal<UInt64>(0, height);
             Assert.Equal<UInt64>(1, merkleBlock.TotalTransactionCount);
@@ -191,11 +206,11 @@ namespace Bitprim.Tests
         public void TestFetchMerkleBlockByHeight()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             MerkleBlock merkleBlock = null;
             UInt64 height = 0;
 
-            Action<int, MerkleBlock, UInt64> handler = delegate(int theError, MerkleBlock theBlock, UInt64 theHeight)
+            Action<ErrorCode, MerkleBlock, UInt64> handler = delegate(ErrorCode theError, MerkleBlock theBlock, UInt64 theHeight)
             {
                 error = theError;
                 merkleBlock = theBlock;
@@ -206,7 +221,7 @@ namespace Bitprim.Tests
             executorFixture_.Executor.Chain.FetchMerkleBlockByHeight(0, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.NotNull(merkleBlock);
             Assert.Equal<UInt64>(0, height);
             Assert.Equal<UInt64>(1, merkleBlock.TotalTransactionCount);
@@ -217,10 +232,10 @@ namespace Bitprim.Tests
         public void TestFetchStealth()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             StealthCompactList list = null;
 
-            Action<int, StealthCompactList> handler = delegate(int theError, StealthCompactList theList)
+            Action<ErrorCode, StealthCompactList> handler = delegate(ErrorCode theError, StealthCompactList theList)
             {
                 error = theError;
                 list = theList;
@@ -229,7 +244,7 @@ namespace Bitprim.Tests
             executorFixture_.Executor.Chain.FetchStealth(new Binary("1111"), 0, handler);
             handlerDone.WaitOne();
             
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.Equal<uint>(0, list.Count);
         }
 
@@ -237,14 +252,14 @@ namespace Bitprim.Tests
         public void TestFetchTransaction()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Transaction tx = null;
             UInt64 height = 0;
             UInt64 index = 0;
 
             WaitUntilBlock(FIRST_NON_COINBASE_BLOCK_HEIGHT, "TestFetchTransaction");
 
-            Action<int, Transaction, UInt64, UInt64> handler = delegate(int theError, Transaction theTx, UInt64 theIndex, UInt64 theHeight)
+            Action<ErrorCode, Transaction, UInt64, UInt64> handler = delegate(ErrorCode theError, Transaction theTx, UInt64 theIndex, UInt64 theHeight)
             {
                 error = theError;
                 tx = theTx;
@@ -253,11 +268,11 @@ namespace Bitprim.Tests
                 handlerDone.Set();
             };
             string txHashHexStr = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16";
-            byte[] hash = HexStringToByteArray(txHashHexStr);
+            byte[] hash = Binary.HexStringToByteArray(txHashHexStr);
             executorFixture_.Executor.Chain.FetchTransaction(hash, true, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.Equal<UInt64>(FIRST_NON_COINBASE_BLOCK_HEIGHT, height);
             Assert.Equal<UInt64>(1, index);
             CheckFirstNonCoinbaseTxFromHeight170(tx, txHashHexStr);
@@ -267,13 +282,13 @@ namespace Bitprim.Tests
         public void TestFetchTransactionPosition()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             UInt64 height = 0;
             UInt64 index = 0;
 
             WaitUntilBlock(FIRST_NON_COINBASE_BLOCK_HEIGHT, "TestFetchTransactionPosition");
 
-            Action<int, UInt64, UInt64> handler = delegate(int theError, UInt64 theIndex, UInt64 theHeight)
+            Action<ErrorCode, UInt64, UInt64> handler = delegate(ErrorCode theError, UInt64 theIndex, UInt64 theHeight)
             {
                 error = theError;
                 index = theIndex;
@@ -281,11 +296,11 @@ namespace Bitprim.Tests
                 handlerDone.Set();
             };
             string txHashHexStr = "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16";
-            byte[] hash = HexStringToByteArray(txHashHexStr);
+            byte[] hash = Binary.HexStringToByteArray(txHashHexStr);
             executorFixture_.Executor.Chain.FetchTransactionPosition(hash, true, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.Equal<UInt64>(1, index);
             Assert.Equal<UInt64>(FIRST_NON_COINBASE_BLOCK_HEIGHT, height);
         }
@@ -294,23 +309,23 @@ namespace Bitprim.Tests
         public void TestFetchBlockByHash170()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             Block block = null;
 
             WaitUntilBlock(FIRST_NON_COINBASE_BLOCK_HEIGHT, "TestFetchBlockByHash170");
 
-            Action<int, Block> handler = delegate(int theError, Block theBlock)
+            Action<ErrorCode, Block> handler = delegate(ErrorCode theError, Block theBlock)
             {
                 error = theError;
                 block = theBlock;
                 handlerDone.Set();
             };
             //https://blockchain.info/es/block-height/170 - 2
-            byte[] hash = HexStringToByteArray("00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee");
+            byte[] hash = Binary.HexStringToByteArray("00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee");
             executorFixture_.Executor.Chain.FetchBlockByHash(hash, handler);
             handlerDone.WaitOne();
 
-            Assert.Equal(0, error);
+            Assert.Equal(ErrorCode.Success, error);
             Assert.NotNull(block);
             VerifyBlock170Header(block.Header);
         }
@@ -352,34 +367,12 @@ namespace Bitprim.Tests
             }
         }
 
-        private static string ByteArrayToHexString(byte[] ba)
-        {
-            StringBuilder hexString = new StringBuilder(ba.Length * 2);
-            for(int i=ba.Length-1; i>=0; i--)
-            {
-                hexString.AppendFormat("{0:x2}", ba[i]);
-            }
-            return hexString.ToString();
-        }
-
-        private static byte[] HexStringToByteArray(string hex)
-        {
-            int numberChars = hex.Length;
-            byte[] bytes = new byte[numberChars / 2];
-            for (int i = 0; i < numberChars; i += 2)
-            {
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            }
-            Array.Reverse(bytes);
-            return bytes;
-        }
-
         private static void VerifyGenesisBlockHeader(Header header)
         {
             Assert.NotNull(header);
-            Assert.Equal("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f", ByteArrayToHexString(header.Hash));
-            Assert.Equal("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", ByteArrayToHexString(header.Merkle));
-            Assert.Equal("0000000000000000000000000000000000000000000000000000000000000000", ByteArrayToHexString(header.PreviousBlockHash));
+            Assert.Equal("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f", Binary.ByteArrayToHexString(header.Hash));
+            Assert.Equal("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", Binary.ByteArrayToHexString(header.Merkle));
+            Assert.Equal("0000000000000000000000000000000000000000000000000000000000000000", Binary.ByteArrayToHexString(header.PreviousBlockHash));
             Assert.Equal<UInt32>(1, header.Version);
             Assert.Equal<UInt32>(486604799, header.Bits);
             Assert.Equal<UInt32>(2083236893, header.Nonce);            
@@ -390,9 +383,9 @@ namespace Bitprim.Tests
         private static void VerifyBlock170Header(Header header)
         {
             Assert.NotNull(header);
-            Assert.Equal("00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee", ByteArrayToHexString(header.Hash));
-            Assert.Equal("7dac2c5666815c17a3b36427de37bb9d2e2c5ccec3f8633eb91a4205cb4c10ff", ByteArrayToHexString(header.Merkle));
-            Assert.Equal("000000002a22cfee1f2c846adbd12b3e183d4f97683f85dad08a79780a84bd55", ByteArrayToHexString(header.PreviousBlockHash));
+            Assert.Equal("00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee", Binary.ByteArrayToHexString(header.Hash));
+            Assert.Equal("7dac2c5666815c17a3b36427de37bb9d2e2c5ccec3f8633eb91a4205cb4c10ff", Binary.ByteArrayToHexString(header.Merkle));
+            Assert.Equal("000000002a22cfee1f2c846adbd12b3e183d4f97683f85dad08a79780a84bd55", Binary.ByteArrayToHexString(header.PreviousBlockHash));
             Assert.Equal<UInt32>(1, header.Version);
             Assert.Equal<UInt32>(486604799, header.Bits);
             Assert.Equal<UInt32>(1889418792, header.Nonce);
@@ -400,12 +393,12 @@ namespace Bitprim.Tests
             Assert.Equal("2009-01-12 03:30:25", utcTime.ToString("yyyy-MM-dd HH:mm:ss"));
         }
 
-        private Tuple<int, UInt64> GetLastHeight()
+        private Tuple<ErrorCode, UInt64> GetLastHeight()
         {
             var handlerDone = new AutoResetEvent(false);
-            int error = 0;
+            ErrorCode error = 0;
             UInt64 height = 0;
-            Action<int, UInt64> handler = delegate(int theError, UInt64 theHeight)
+            Action<ErrorCode, UInt64> handler = delegate(ErrorCode theError, UInt64 theHeight)
             {
                 error = theError;
                 height = theHeight;
@@ -413,13 +406,13 @@ namespace Bitprim.Tests
             };
             executorFixture_.Executor.Chain.FetchLastHeight(handler);
             handlerDone.WaitOne();
-            return new Tuple<int, UInt64>(error, height);
+            return new Tuple<ErrorCode, UInt64>(error, height);
         }
 
         private void CheckFirstNonCoinbaseTxFromHeight170(Transaction tx, string txHashHexStr)
         {
             Assert.Equal<UInt32>(1, tx.Version);
-            Assert.Equal(txHashHexStr, ByteArrayToHexString(tx.Hash));
+            Assert.Equal(txHashHexStr, Binary.ByteArrayToHexString(tx.Hash));
             Assert.Equal<UInt32>(0, tx.Locktime);
             Assert.Equal<UInt64>(275, tx.GetSerializedSize(true));
             Assert.Equal<UInt64>(275, tx.GetSerializedSize(false)); //TODO(dario) Does it make sense that it's the same value?
@@ -432,21 +425,84 @@ namespace Bitprim.Tests
             Assert.False(tx.IsCoinbase);
             Assert.False(tx.IsNullNonCoinbase);
             Assert.False(tx.IsOversizeCoinbase);
-            Assert.True(tx.IsOverspent); //Because it's coinbase, inputs don't add up to outputs
+            Assert.True(tx.IsOverspent); //TODO Why?
             Assert.False(tx.IsDoubleSpend(true));
             Assert.False(tx.IsDoubleSpend(false));
-            Assert.True(tx.IsMissingPreviousOutputs); //Because it's coinbase
+            Assert.True(tx.IsMissingPreviousOutputs); //TODO Why?
             Assert.True(tx.IsFinal(FIRST_NON_COINBASE_BLOCK_HEIGHT, 0));
             Assert.False(tx.IsLocktimeConflict);
+            CheckFirstNonCoinbaseTxFromHeight170Inputs(tx);
+            CheckFirstNonCoinbaseTxFromHeight170Outputs(tx);
+        }
+
+        private void CheckFirstNonCoinbaseTxFromHeight170Inputs(Transaction tx)
+        {
+            Assert.Equal(1UL, tx.Inputs.Count);
+            //Assert.Equal(50000000UL, tx.TotalInputValue); //TODO Blockdozer says this is 50 BTC
+            //Input 0
+            Input input = tx.Inputs[0];
+            Assert.Equal(4294967295, input.Sequence);
+            Assert.Equal(113UL, input.GetSerializedSize(true));
+            Assert.Equal(111UL, input.GetSerializedSize(false));
+            Assert.Equal(0UL, input.GetSignatureOperationsCount(true));
+            Assert.Equal(0UL, input.GetSignatureOperationsCount(false));
+            Assert.True(input.IsFinal);
+            Assert.True(input.IsValid);
+            //Assert.Equal("EPA", input.PreviousOutput.Script.ToString(0)); //TODO Deadlock/hang
+            //Script
+            Script script = input.Script;
+            //Assert.Equal(0UL, script.GetEmbeddedSigOps(input.PreviousOutput.Script)); //TODO Deadlock/hang
+            Assert.Equal(0UL, script.GetSigOps(true));
+            Assert.Equal(0UL, script.GetSigOps(false));
+            Assert.True(script.IsValid);
+            Assert.True(script.OperationsAreValid);
+            Assert.Equal(72UL, script.SatoshiContentSize);
+            Assert.Equal("[304402204e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd410220181522ec8eca07de4860a4acdd12909d831cc56cbbac4622082221a8768d1d0901]", script.ToString(0));
+        }
+
+        private void CheckFirstNonCoinbaseTxFromHeight170Outputs(Transaction tx)
+        {
+            Assert.Equal(2UL, tx.Outputs.Count);
+            Assert.Equal(5000000000UL, tx.TotalOutputValue);
+            //Output 0
+            Output output0 = tx.Outputs[0];
+            Assert.Equal(76UL, output0.GetSerializedSize(true));
+            Assert.Equal(76UL, output0.GetSerializedSize(true)); //TODO In inputs, it's two bytes less; does this make sense?
+            Assert.True(output0.IsValid);
+            Assert.Equal(1UL, output0.SignatureOperationCount);
+            Assert.Equal(1000000000UL, output0.Value);
+            Script script0 = output0.Script;
+            //script0.GetEmbeddedSigOps TODO Hangs
+            Assert.Equal(1UL, script0.GetSigOps(true));
+            Assert.Equal(1UL, script0.GetSigOps(false));
+            Assert.True(script0.IsValid);
+            Assert.True(script0.OperationsAreValid);
+            Assert.Equal(67UL, script0.SatoshiContentSize);
+            Assert.Equal("[04ae1a62fe09c5f51b13905f07f06b99a2f7159b2225f374cd378d71302fa28414e7aab37397f554a7df5f142c21c1b7303b8a0626f1baded5c72a704f7e6cd84c] checksig", script0.ToString(0));
+            //Output 1
+            Output output1 = tx.Outputs[1];
+            Assert.Equal(76UL, output1.GetSerializedSize(true));
+            Assert.Equal(76UL, output1.GetSerializedSize(true));
+            Assert.True(output1.IsValid);
+            Assert.Equal(1UL, output1.SignatureOperationCount);
+            Assert.Equal(4000000000UL, output1.Value);
+            Script script1 = output1.Script;
+            //script1.GetEmbeddedSigOps TODO Hangs
+            Assert.Equal(1UL, script1.GetSigOps(true));
+            Assert.Equal(1UL, script1.GetSigOps(false));
+            Assert.True(script1.IsValid);
+            Assert.True(script1.OperationsAreValid);
+            Assert.Equal(67UL, script1.SatoshiContentSize);
+            Assert.Equal("[0411db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5cb2e0eaddfb84ccf9744464f82e160bfa9b8b64f9d4c03f999b8643f656b412a3] checksig", script1.ToString(0));
         }
 
         private void WaitUntilBlock(UInt64 desiredHeight, string callerName)
         {
-            int error = 0;
+            ErrorCode error = 0;
             UInt64 height = 0;            
             while(error == 0 && height < desiredHeight){
                 Console.WriteLine("--->" + callerName + " checking height: " + height);
-                Tuple<int, UInt64> errorAndHeight = GetLastHeight();
+                Tuple<ErrorCode, UInt64> errorAndHeight = GetLastHeight();
                 error = errorAndHeight.Item1;
                 height = errorAndHeight.Item2;
                 if(height < desiredHeight)
@@ -454,7 +510,7 @@ namespace Bitprim.Tests
                     System.Threading.Thread.Sleep(10000);
                 }
             }
-            Assert.Equal(error, 0);
+            Assert.Equal(ErrorCode.Success, error);
         }
 
     }
